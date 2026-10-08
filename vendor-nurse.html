@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0e3b36">
+<title>약물 재고 현황 · 간호팀</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#f2f5f4;--ink:#16302b;--mut:#62766f;--line:#dbe4e1;--acc:#0f766e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 'Noto Sans KR',system-ui,'Malgun Gothic',sans-serif}
+header{background:#0e3b36;color:#fff;padding:18px 16px}
+.w{max-width:680px;margin:auto}
+h1{margin:0;font-size:20px;font-weight:800}
+header small{opacity:.75;display:block;margin-top:2px;font-size:13px}
+main{max-width:680px;margin:auto;padding:14px 16px 40px}
+.sum{border-radius:14px;padding:14px 16px;font-weight:700;font-size:17px;background:#e3f3f1;color:#0f766e}
+.sum.need{background:#fee2e2;color:#b91c1c}
+.sum small{display:block;font-weight:400;font-size:13px;margin-top:2px;opacity:.85}
+.bar{display:flex;gap:8px;margin:12px 0}
+.bar input{flex:1;min-width:0;padding:10px 14px;border:1.5px solid var(--line);border-radius:12px;font:inherit}
+.bar button{border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:0 14px;font:inherit;white-space:nowrap}
+.bar button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
+ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+li{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:12px 14px 12px 18px;position:relative;overflow:hidden}
+li::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:#0f766e}
+li.low::before{background:#f59e0b}li.crit::before{background:#b91c1c}
+.nm{flex:1;font-weight:700;overflow-wrap:anywhere}
+.nm small{display:block;font-weight:400;color:var(--mut);font-size:12px}
+.b{font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px;background:#e3f3f1;color:#0f766e;white-space:nowrap}
+.low .b{background:#fef3c7;color:#b45309}.crit .b{background:#fee2e2;color:#b91c1c}
+.n{font-size:24px;font-weight:800;min-width:48px;text-align:right;font-variant-numeric:tabular-nums;line-height:1}
+.n small{display:block;font-size:11px;font-weight:400;color:var(--mut);margin-top:2px}
+.low .n{color:#b45309}.crit .n{color:#b91c1c}
+.msg{background:#fff;border-radius:14px;padding:24px;text-align:center;color:var(--mut)}
+.foot{margin-top:18px;font-size:12px;color:var(--mut);text-align:center}
+</style></head><body>
+<header><div class="w"><h1>약물 재고 현황</h1><small>삼성자라다 소아청소년과 · 간호팀</small></div></header>
+<main>
+<div class="sum" id="sum">확인 중…</div>
+<div class="bar"><input type="search" id="q" placeholder="약물명 검색" aria-label="약물명 검색"><button id="bn">부족 약물만</button></div>
+<div id="list"></div>
+<div class="foot" id="foot">조회 전용 페이지입니다. 수량은 병원에서 실시간으로 갱신합니다.</div>
+</main>
+<script>
+const CFG={url:'https://ubardflfhoiilhfyqsms.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViYXJkZmxmaG9paWxoZnlxc21zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNzAwNjEsImV4cCI6MjA5Nzg0NjA2MX0.-v69OvlhuuaEF8Y1WXhP1UKFrEvr-5EJfyhnP0Akol8'},SHOW_QTY=true;
+const SCOPE=d=>!(d.cat&&d.cat.startsWith('채혈검사'));
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const st=d=>d.qty<=0?'crit':d.qty<d.threshold?(d.qty<=Math.floor(d.threshold*.4)?'crit':'low'):'ok';
+const SN={ok:'재고 충분',low:'부족 주의',crit:'긴급 부족'},ORD={crit:0,low:1,ok:2};
+let drugs=[],need=false,sb;
+function render(){
+  const bad=drugs.filter(d=>st(d)!=='ok'),crit=drugs.filter(d=>st(d)==='crit').length;
+  const s=$('#sum');
+  s.className='sum'+(bad.length?' need':'');
+  s.innerHTML=bad.length?`발주가 필요한 약물 ${bad.length}종<small>긴급 부족 ${crit}종 · 부족 주의 ${bad.length-crit}종</small>`:`모든 약물의 재고가 충분합니다<small>전체 ${drugs.length}종</small>`;
+  $('#bn').classList.toggle('on',need);
+  const q=$('#q').value.trim().toLowerCase();
+  const f=drugs.filter(d=>d.name.toLowerCase().includes(q)&&(!need||st(d)!=='ok')).sort((a,b)=>ORD[st(a)]-ORD[st(b)]||(a.sort_order||0)-(b.sort_order||0));
+  $('#list').innerHTML=f.length?'<ul>'+f.map(d=>{const k=st(d);return `<li class="${k}"><div class="nm">${esc(d.name)}<small>${esc(d.cat||'')}</small></div><span class="b">${SN[k]}</span>${SHOW_QTY?`<div class="n">${d.qty}<small>기준 ${d.threshold}</small></div>`:''}</li>`}).join('')+'</ul>':'<div class="msg">'+(need?'부족한 약물이 없습니다.':'표시할 약물이 없습니다.')+'</div>';
+}
+async function load(){
+  try{
+    const r=await sb.from('drugs').select('name,cat,qty,threshold,sort_order').order('sort_order',{ascending:true});
+    if(r.error)throw r.error;
+    drugs=r.data.filter(SCOPE);render();
+    const n=new Date();$('#foot').textContent='마지막 확인 '+(n.getMonth()+1)+'/'+n.getDate()+' '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+' · 조회 전용 페이지입니다.';
+  }catch(e){$('#sum').className='sum';$('#sum').textContent='재고를 불러오지 못했습니다. 잠시 후 다시 열어 주세요.'}
+}
+$('#q').oninput=render;
+$('#bn').onclick=()=>{need=!need;render()};
+if(window.supabase){sb=supabase.createClient(CFG.url,CFG.key);load();
+  sb.channel('v').on('postgres_changes',{event:'*',schema:'public',table:'drugs'},load).subscribe();
+  setInterval(load,120000)}
+else $('#sum').textContent='페이지를 불러오지 못했습니다. 인터넷 연결을 확인하세요.';
+</script></body></html>
