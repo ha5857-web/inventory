@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e3b36">
+<title>약물 재고 · 간호</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#f2f5f4;--card:#fff;--ink:#16302b;--mut:#62766f;--line:#dbe4e1;--brand:#0e3b36;--acc:#0f766e;--accl:#e3f3f1;
+--ok:#0f766e;--okbg:#e3f3f1;--lo:#b45309;--lobg:#fef3c7;--cr:#b91c1c;--crbg:#fee2e2}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 'Noto Sans KR',system-ui,-apple-system,'Malgun Gothic',sans-serif;padding-bottom:env(safe-area-inset-bottom)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid #5eead4;outline-offset:2px}
+header{background:var(--brand);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 16px 14px;position:sticky;top:0;z-index:5}
+.hin{max-width:880px;margin:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ttl{flex:1;min-width:160px}
+.ttl h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em}
+.ttl small{opacity:.7;font-size:12px}
+.pill{display:flex;align-items:center;gap:6px;font-size:12px;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,.12)}
+.dot{width:8px;height:8px;border-radius:50%;background:#9ca3af}
+.live .dot{background:#4ade80}.off .dot{background:#f87171}
+.icon{background:rgba(255,255,255,.12);border:0;color:#fff;width:34px;height:34px;border-radius:50%;font-size:16px}
+main{max-width:880px;margin:auto;padding:14px 16px 40px}
+.seg{display:flex;background:#e3eae8;border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:none;padding:9px 6px;border-radius:9px;font-weight:500;color:var(--mut)}
+.seg button.on{background:var(--card);color:var(--ink);font-weight:700;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}
+.tile{background:var(--card);border:2px solid transparent;border-radius:12px;padding:10px 12px;text-align:left}
+.tile.on{border-color:var(--acc)}
+.tile span{display:block;font-size:12px;color:var(--mut)}
+.tile b{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.2}
+.tile.t-lo b{color:var(--lo)}.tile.t-cr b{color:var(--cr)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.bar input[type=search]{flex:1;min-width:150px;padding:10px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--card)}
+.step{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--mut)}
+.step .seg{width:110px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:10px 0;scrollbar-width:none}
+.chips button{white-space:nowrap;border:1.5px solid var(--line);background:var(--card);border-radius:99px;padding:6px 14px;font-size:13px}
+.chips button.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
+#diag{display:none;background:var(--crbg);color:#7f1d1d;border-radius:12px;padding:12px 14px;margin:6px 0 10px;font-size:14px}
+#diag.show{display:block}
+#diag code{display:block;font-size:12px;margin:4px 0 8px;opacity:.8;word-break:break-all}
+#diag button,.empty button{border:0;background:var(--cr);color:#fff;border-radius:9px;padding:7px 14px;font-weight:700}
+.grp{display:flex;align-items:center;justify-content:space-between;margin:16px 2px 6px;font-size:13px;font-weight:700;color:var(--mut)}
+.grp button{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:3px 10px;font-size:12px}
+ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.row{display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center;background:var(--card);border-radius:14px;padding:12px 14px 12px 18px;position:relative;overflow:hidden}
+.row::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--ok)}
+.row.s-low::before{background:#f59e0b}.row.s-crit::before{background:var(--cr)}
+.nm{font-weight:700;font-size:16px;overflow-wrap:anywhere}
+.meta{font-size:12px;color:var(--mut)}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;margin-left:6px;vertical-align:1px;background:var(--okbg);color:var(--ok)}
+.s-low .badge{background:var(--lobg);color:var(--lo)}.s-crit .badge{background:var(--crbg);color:var(--cr)}
+.n{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;min-width:56px;text-align:right;line-height:1}
+.s-low .n{color:var(--lo)}.s-crit .n{color:var(--cr)}
+.n small{display:block;font-size:11px;font-weight:400;color:var(--mut);margin-top:3px}
+.ctl{grid-column:1/-1;display:flex;gap:8px;align-items:center}
+.ctl .q{width:46px;height:46px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);font-size:24px;font-weight:700}
+.ctl .q:active{background:var(--accl);border-color:var(--acc)}
+.ctl .sm{border:1px solid var(--line);background:none;border-radius:9px;padding:7px 12px;font-size:13px}
+.ctl .sm.del{color:var(--cr);margin-left:auto}
+.empty{background:var(--card);border-radius:14px;padding:28px 18px;text-align:center;color:var(--mut)}
+.panel{background:var(--card);border-radius:14px;margin-top:22px;overflow:hidden}
+.panel h2{margin:0;padding:11px 14px;font-size:13px;color:var(--mut);display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)}
+.panel h2 button{border:0;background:none;color:var(--cr);font-size:12px}
+.lg{display:flex;gap:10px;padding:9px 14px;border-bottom:1px solid var(--line);font-size:13px}
+.lg:last-child{border:0}.lg time{color:var(--mut);min-width:40px}
+.up{color:var(--ok);font-weight:700}.dn{color:var(--cr);font-weight:700}
+dialog{border:0;border-radius:16px;padding:20px;width:min(380px,92vw);box-shadow:0 20px 50px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(10,30,26,.5)}
+dialog h3{margin:0 0 4px}dialog p{margin:0 0 12px;color:var(--mut);font-size:13px}
+dialog label{display:block;font-size:12px;font-weight:700;margin:12px 0 4px;color:var(--mut)}
+dialog input,dialog select{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff}
+.act{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.act button{border-radius:10px;padding:10px 18px;border:1.5px solid var(--line);background:none}
+.act .go{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
+.err{color:var(--cr);font-size:12px;min-height:16px;margin-top:8px}
+#toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:10px 18px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:20}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media(max-width:520px){.tiles{grid-template-columns:repeat(2,1fr)}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+[hidden]{display:none!important}
+#gate{position:fixed;inset:0;z-index:100;background:#0e3b36;display:flex;align-items:center;justify-content:center;padding:20px}
+#gate .card{background:#fff;border-radius:18px;padding:26px 22px;width:min(360px,100%)}
+#gate h2{margin:0 0 4px;font-size:19px}#gate p{margin:0 0 14px;color:var(--mut);font-size:13px}
+#gate input,#dPw input{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:10px;font:inherit}
+#gate button{width:100%;margin-top:12px;padding:12px;border:0;border-radius:10px;background:var(--acc);color:#fff;font-weight:700;font:inherit;font-weight:700}
+</style>
+</head>
+<body>
+<header><div class="hin">
+  <div class="ttl"><h1>약물 재고 · 간호</h1><small id="upd">삼성자라다 소아청소년과</small></div>
+  <div class="pill" id="sync"><span class="dot"></span><span id="synct">연결 중</span></div>
+  <button class="icon" id="shareb" aria-label="업체용 링크 복사" title="업체용 링크 복사">🔗</button>
+  <button class="icon" id="cfgb" aria-label="연결 설정">⚙</button>
+</div></header>
+<main>
+  <div class="seg" id="roles" role="tablist" aria-label="역할"></div>
+  <div class="tiles" id="tiles"></div>
+  <div class="bar">
+    <input type="search" id="q" placeholder="약물명 검색" aria-label="약물명 검색">
+    <div class="step">한 번에<div class="seg" id="steps"><button data-s="1" class="on">1개</button><button data-s="10">10개</button></div></div>
+  </div>
+  <div class="chips" id="chips"></div>
+  <div id="diag" role="alert"></div>
+  <div id="list"></div>
+  <section class="panel"><h2>최근 변경 이력 <button id="rst">이력 초기화</button></h2><div id="logs"></div></section>
+</main>
+
+<dialog id="dEdit"><h3 id="eName"></h3><p id="eSub"></p>
+  <label for="eQty">재고 수량</label><input id="eQty" type="number" min="0" inputmode="numeric">
+  <label for="eMemo">메모 (선택)</label><input id="eMemo" placeholder="예: 입고, 폐기, 실사 보정">
+  <div id="eCatW"><label for="eCat">분류</label><select id="eCat"></select></div>
+  <div class="act"><button data-x>취소</button><button class="go" id="eGo">저장</button></div></dialog>
+
+<dialog id="dAdd"><h3>약물 추가</h3><p>의사만 추가할 수 있습니다.</p>
+  <label for="aName">약물명</label><input id="aName">
+  <label for="aCat">분류</label><select id="aCat"></select>
+  <label for="aNew">새 분류 이름 (목록에 없을 때만)</label><input id="aNew">
+  <label for="aQty">초기 재고</label><input id="aQty" type="number" min="0" value="0" inputmode="numeric">
+  <div class="err" id="aErr"></div>
+  <div class="act"><button data-x>취소</button><button class="go" id="aGo">추가</button></div></dialog>
+
+<dialog id="dCfg"><h3>연결 설정</h3><p>비워 두면 기본 Supabase 프로젝트를 사용합니다.</p>
+  <label for="cUrl">Supabase 주소</label><input id="cUrl" placeholder="https://xxxx.supabase.co">
+  <label for="cKey">anon 키</label><input id="cKey">
+  <div class="act"><button id="cReset">기본값</button><button data-x>취소</button><button class="go" id="cGo">저장 후 새로고침</button></div></dialog>
+
+<div id="gate" hidden><div class="card"><h2>약물 재고 · 간호</h2><p>비밀번호를 입력하세요.</p>
+<input id="gIn" type="password" autocomplete="current-password" aria-label="비밀번호"><div class="err" id="gErr"></div><button id="gGo">열기</button></div></div>
+<dialog id="dPw"><h3>비밀번호 확인</h3><p id="pwMsg"></p><input id="pwIn" type="password" aria-label="비밀번호"><div class="err" id="pwErr"></div>
+<div class="act"><button data-x>취소</button><button class="go" id="pwGo">확인</button></div></dialog>
+<div id="toast"></div>
+
+<script>
+const DEF={url:'https://ubardflfhoiilhfyqsms.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InViYXJkZmxmaG9paWxoZnlxc21zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNzAwNjEsImV4cCI6MjA5Nzg0NjA2MX0.-v69OvlhuuaEF8Y1WXhP1UKFrEvr-5EJfyhnP0Akol8'};
+const OWN='nurse',ROLES={nurse:'간호사',doctor:'의사'},SCOPE=d=>!(d.cat&&d.cat.startsWith('채혈검사')),SCOPE_MSG='간호 앱의 분류 이름은 "채혈검사"로 시작할 수 없습니다.';const K=k=>k==='cfg'?k:OWN+':'+k;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ls={get(k){try{return localStorage.getItem(K(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(K(k),v)}catch(e){}},del(k){try{localStorage.removeItem(K(k))}catch(e){}}};
+let sb,drugs=[],logs=[],last={},role=ls.get('role')||OWN,step=1,cat='all',stat='all',tmr;
+if(!ROLES[role]||role==='doctor')role=OWN;
+
+const status=d=>d.qty<=0?'crit':d.qty<d.threshold?(d.qty<=Math.floor(d.threshold*.4)?'crit':'low'):'ok';
+const SN={ok:'정상',low:'부족 주의',crit:'긴급 부족'};
+const visible=()=>drugs.filter(SCOPE);
+const cats=()=>[...new Set(visible().map(d=>d.cat).filter(Boolean))];
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(tmr);tmr=setTimeout(()=>t.classList.remove('show'),2400)}
+function setSync(s){const p=$('#sync');p.className='pill '+s;$('#synct').textContent=s==='live'?'실시간 연결됨':s==='off'?'연결 안 됨':'연결 중'}
+function stamp(){const n=new Date();$('#upd').textContent='마지막 업데이트 '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')}
+function cache(){ls.set('cache',JSON.stringify(drugs))}
+
+function hint(e){const m=(e.message||'')+' '+(e.code||'')+' '+(e.status||'');
+  if(/Failed to fetch|NetworkError|Load failed/i.test(m))return 'Supabase 서버에 닿지 않습니다. 인터넷이 정상이라면 무료 플랜 프로젝트가 일시정지됐을 가능성이 큽니다. supabase.com 대시보드에서 프로젝트를 Restore 하세요.';
+  if(/42501|permission|JWT|401|403|Invalid API key/i.test(m))return '접근 권한 문제입니다. API 키와 drugs·logs 테이블의 RLS 정책(anon 읽기/쓰기)을 확인하세요.';
+  if(/PGRST205|42P01|does not exist|schema cache/i.test(m))return 'drugs 테이블을 찾을 수 없습니다. 테이블 이름과 public 스키마를 확인하세요.';
+  return '⚙ 연결 설정에서 주소와 키를 확인하세요.'}
+function diag(e){const d=$('#diag');d.innerHTML='<b>약물 목록을 불러오지 못했습니다.</b><code>'+esc(e.message||e)+'</code>'+esc(hint(e))+'<br><br><button id="retry">다시 시도</button>';d.classList.add('show');$('#retry').onclick=load}
+
+async function init(){
+  let cfg=DEF;try{cfg=JSON.parse(ls.get('cfg'))||DEF}catch(e){}
+  const c=ls.get('cache');if(c){try{drugs=JSON.parse(c);render()}catch(e){}}
+  if(!window.supabase){setSync('off');diag({message:'supabase-js 라이브러리를 불러오지 못했습니다',status:'Failed to fetch'});return}
+  sb=supabase.createClient(cfg.url,cfg.key);
+  await load();subscribe();
+}
+async function load(){
+  setSync('connecting');$('#diag').classList.remove('show');
+  const r=await sb.from('drugs').select('*').order('sort_order',{ascending:true}).order('id',{ascending:true});
+  if(r.error){setSync('off');diag(r.error);render();return}
+  drugs=r.data;cache();render();stamp();loadLogs();
+}
+async function loadLogs(){
+  const a=await sb.from('logs').select('*').order('created_at',{ascending:false}).limit(60);
+  if(!a.error){logs=a.data;renderLogs()}
+  const b=await sb.from('logs').select('drug_name,delta,who,created_at').eq('type','qty').order('created_at',{ascending:false}).limit(500);
+  if(!b.error){last={};b.data.forEach(l=>{if(!last[l.drug_name])last[l.drug_name]=l});render()}
+}
+function subscribe(){
+  sb.channel('drugs-rt').on('postgres_changes',{event:'*',schema:'public',table:'drugs'},p=>{
+    if(p.eventType==='DELETE')drugs=drugs.filter(d=>d.id!==p.old.id);
+    else{const i=drugs.findIndex(d=>d.id===p.new.id);if(i<0)drugs.push(p.new);else drugs[i]={...drugs[i],...p.new}}
+    cache();render();stamp()}).subscribe(s=>setSync(s==='SUBSCRIBED'?'live':'off'));
+  sb.channel('logs-rt').on('postgres_changes',{event:'INSERT',schema:'public',table:'logs'},p=>{
+    logs.unshift(p.new);logs=logs.slice(0,60);if(p.new.type==='qty')last[p.new.drug_name]=p.new;renderLogs();render()}).subscribe();
+}
+
+function render(){
+  $('#roles').innerHTML=Object.keys(ROLES).map(k=>`<button role="tab" data-r="${k}" class="${k===role?'on':''}">${ROLES[k]}</button>`).join('');
+  const base=visible();
+  const cnt={ok:0,low:0,crit:0};base.forEach(d=>cnt[status(d)]++);
+  $('#tiles').innerHTML=[['all','전체 약물',base.length,''],['ok','정상',cnt.ok,''],['low','부족 주의',cnt.low,'t-lo'],['crit','긴급 부족',cnt.crit,'t-cr']]
+    .map(t=>`<button class="tile ${t[3]} ${stat===t[0]?'on':''}" data-t="${t[0]}"><span>${t[1]}</span><b>${t[2]}</b></button>`).join('');
+  const cs=[...new Set(base.map(d=>d.cat).filter(Boolean))];
+  if(cat!=='all'&&!cs.includes(cat))cat='all';
+  $('#chips').innerHTML=['all',...cs].map(c=>`<button data-c="${esc(c)}" class="${c===cat?'on':''}">${c==='all'?'전체':esc(c)}</button>`).join('');
+  const q=$('#q').value.trim().toLowerCase(),doc=role!=='nurse',dr=role==='doctor';
+  const f=base.filter(d=>d.name.toLowerCase().includes(q)&&(stat==='all'||status(d)===stat)&&(cat==='all'||d.cat===cat));
+  if(!f.length){
+    $('#list').innerHTML='<div class="empty">'+(drugs.length?'조건에 맞는 약물이 없습니다.':'불러온 약물이 0건입니다.<br>테이블이 비어 있거나, RLS 정책이 anon 읽기를 막고 있을 수 있습니다. 이 경우 오류 없이 빈 목록이 옵니다.')+'</div>';return}
+  const g={};f.forEach(d=>(g[d.cat||'미분류']=g[d.cat||'미분류']||[]).push(d));
+  $('#list').innerHTML=Object.entries(g).map(([c,a])=>`<div class="grp"><span>${esc(c)} · ${a.length}</span>${dr?`<button data-add="${esc(c)}">＋ 추가</button>`:''}</div><ul>`+a.map(d=>{
+    const s=status(d),l=last[d.name];let lm='';
+    if(l){const t=new Date(l.created_at);lm=` · ${t.getMonth()+1}/${t.getDate()} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')} ${l.delta>0?'+':''}${l.delta} ${esc(l.who||'')}`}
+    return `<li class="row s-${s}" data-id="${d.id}"><div><span class="nm">${esc(d.name)}</span><span class="badge">${SN[s]}</span><div class="meta">${esc(d.cat||'')}${lm}</div></div>
+    <div class="n">${d.qty}<small>기준 ${d.threshold}</small></div>
+    <div class="ctl"><button class="q" data-a="-" aria-label="${esc(d.name)} ${step}개 줄이기">−</button><button class="q" data-a="+" aria-label="${esc(d.name)} ${step}개 늘리기">+</button>
+    ${doc?'<button class="sm" data-a="edit">직접 입력</button>':''}${dr?'<button class="sm del" data-a="del">삭제</button>':''}</div></li>`}).join('')+'</ul>').join('');
+}
+function renderLogs(){
+  const L=logs.filter(l=>{const d=drugs.find(x=>x.name===l.drug_name);return !!d&&SCOPE(d)}).slice(0,8);$('#logs').innerHTML=L.length?L.map(l=>{
+    const t=new Date(l.created_at).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+    const lab=l.type==='add'?'<span class="up">신규 등록</span>':l.type==='del'?'<span class="dn">삭제</span>':`<span class="${l.delta>=0?'up':'dn'}">${l.delta>=0?'+':''}${l.delta}개</span>`;
+    return `<div class="lg"><time>${t}</time><div>${esc(l.drug_name)} ${lab}${l.memo?' — '+esc(l.memo):''}<div class="meta">${esc(l.who||'')}</div></div></div>`}).join(''):'<div class="lg meta">아직 변경 이력이 없습니다.</div>';
+}
+
+async function change(id,delta,memo){
+  const d=drugs.find(x=>x.id===id);if(!d)return;
+  const n=Math.max(0,d.qty+delta);if(n===d.qty)return;
+  const real=n-d.qty;d.qty=n;render();
+  const r=await sb.from('drugs').update({qty:n}).eq('id',id);
+  if(r.error){d.qty-=real;render();toast('저장 실패 — 연결을 확인하세요');return}
+  const row={drug_name:d.name,delta:real,memo:memo||'',who:ROLES[role],type:'qty'};
+  last[d.name]={...row,created_at:new Date().toISOString()};cache();
+  await sb.from('logs').insert(row);
+}
+let editId=null;
+function openEdit(id){
+  const d=drugs.find(x=>x.id===id);editId=id;
+  $('#eName').textContent=d.name;$('#eSub').textContent='현재 재고 '+d.qty+'개';
+  $('#eQty').value=d.qty;$('#eMemo').value='';
+  $('#eCatW').style.display=role==='doctor'?'':'none';
+  $('#eCat').innerHTML=cats().map(c=>`<option ${c===d.cat?'selected':''}>${esc(c)}</option>`).join('');
+  $('#dEdit').showModal();
+}
+$('#eGo').onclick=async()=>{
+  const d=drugs.find(x=>x.id===editId),n=parseInt($('#eQty').value,10);
+  if(!d||isNaN(n)||n<0)return;
+  $('#dEdit').close();
+  await change(d.id,n-d.qty,$('#eMemo').value);
+  const nc=$('#eCat').value;
+  if(role==='doctor'&&nc&&nc!==d.cat){const old=d.cat;d.cat=nc;render();const r=await sb.from('drugs').update({cat:nc}).eq('id',d.id);if(r.error){d.cat=old;render();toast('분류 변경 실패')}else toast(d.name+' → '+nc)}
+  else toast('저장되었습니다');
+};
+function openAdd(c){
+  $('#aName').value='';$('#aQty').value='0';$('#aNew').value='';$('#aErr').textContent='';
+  $('#aCat').innerHTML=cats().map(x=>`<option ${x===c?'selected':''}>${esc(x)}</option>`).join('');
+  $('#dAdd').showModal();
+}
+$('#aGo').onclick=async()=>{
+  const name=$('#aName').value.trim(),c=$('#aNew').value.trim()||$('#aCat').value,qty=Math.max(0,parseInt($('#aQty').value,10)||0);
+  if(!name){$('#aErr').textContent='약물명을 입력하세요.';return}
+  if(!c){$('#aErr').textContent='분류를 선택하거나 새로 입력하세요.';return}if(!SCOPE({cat:c})){$('#aErr').textContent=SCOPE_MSG;return}
+  const max=drugs.length?Math.max(...drugs.map(d=>d.sort_order||0)):0;
+  const r=await sb.from('drugs').insert({name,cat:c,qty,threshold:5,sort_order:max+1}).select().single();
+  if(r.error){$('#aErr').textContent=r.error.code==='23505'?'이미 등록된 약물명입니다.':'추가 실패: '+r.error.message;return}
+  if(!drugs.find(d=>d.id===r.data.id))drugs.push(r.data);cache();render();
+  await sb.from('logs').insert({drug_name:name,delta:qty,memo:'신규 등록',who:ROLES[role],type:'add'});
+  $('#dAdd').close();toast(name+' 추가됨');
+};
+async function del(id){
+  const d=drugs.find(x=>x.id===id);if(!d||!confirm('"'+d.name+'"을(를) 삭제할까요?'))return;
+  drugs=drugs.filter(x=>x.id!==id);render();
+  const r=await sb.from('drugs').delete().eq('id',id);
+  if(r.error){drugs.push(d);render();toast('삭제 실패');return}
+  cache();await sb.from('logs').insert({drug_name:d.name,delta:0,memo:'',who:ROLES[role],type:'del'});toast(d.name+' 삭제됨');
+}
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button');if(!t)return;
+  if(t.hasAttribute('data-x'))t.closest('dialog').close();
+  else if(t.dataset.r){setRole(t.dataset.r)}
+  else if(t.dataset.t){stat=stat===t.dataset.t?'all':t.dataset.t;render()}
+  else if(t.dataset.c){cat=t.dataset.c;render()}
+  else if(t.dataset.s){step=+t.dataset.s;document.querySelectorAll('#steps button').forEach(b=>b.classList.toggle('on',b===t));render()}
+  else if(t.dataset.add!==undefined)openAdd(t.dataset.add);
+  else if(t.dataset.a){
+    const id=+t.closest('.row').dataset.id,a=t.dataset.a;
+    if(a==='+')change(id,step);else if(a==='-')change(id,-step);else if(a==='edit')openEdit(id);else if(a==='del')del(id);
+  }
+});
+$('#q').oninput=render;
+$('#rst').onclick=async()=>{
+  if(!(await checkPw('doctor','이력을 초기화하려면 의사 비밀번호를 입력하세요.')))return;
+  logs=logs.filter(l=>{const d=drugs.find(x=>x.name===l.drug_name);return !(d&&SCOPE(d))});renderLogs();await sb.from('logs').delete().in('drug_name',drugs.filter(SCOPE).map(d=>d.name));toast('변경 이력이 초기화되었습니다');
+};
+$('#cfgb').onclick=()=>{let c={};try{c=JSON.parse(ls.get('cfg'))||{}}catch(e){}$('#cUrl').value=c.url||'';$('#cKey').value=c.key||'';$('#dCfg').showModal()};
+$('#cGo').onclick=()=>{const u=$('#cUrl').value.trim(),k=$('#cKey').value.trim();if(u&&k)ls.set('cfg',JSON.stringify({url:u,key:k}));else ls.del('cfg');location.reload()};
+$('#cReset').onclick=()=>{ls.del('cfg');ls.del('cache');location.reload()};
+$('#shareb').onclick=async()=>{const u=new URL('vendor-nurse.html',location.href).href;try{await navigator.clipboard.writeText(u);toast('업체용 링크를 복사했습니다')}catch(e){prompt('업체용 링크',u)}};
+const HASH={own:'32c2fa6200128176fb736e9f8b35621153a2d6c5fac2f8016ab924757e67b446',doctor:'3954b0ebab846d7f8cfd92849138ebe3c53847507bb7729aa37548f8d35226a8'},SALT='jarada-inv:';
+async function sha(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(SALT+s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+function askPw(msg){return new Promise(res=>{const d=$('#dPw');$('#pwMsg').textContent=msg;$('#pwIn').value='';
+  $('#pwGo').onclick=()=>{res($('#pwIn').value);d.close()};$('#pwIn').onkeydown=e=>{if(e.key==='Enter')$('#pwGo').click()};
+  d.onclose=()=>res(null);d.showModal();$('#pwIn').focus()})}
+async function checkPw(which,msg){const v=await askPw(msg);if(v===null)return false;if(await sha(v)===HASH[which])return true;toast('비밀번호가 맞지 않습니다');return false}
+async function setRole(r){if(r==='doctor'&&role!=='doctor'&&!(await checkPw('doctor','의사 비밀번호를 입력하세요.')))return;role=r;render()}
+function gate(){return new Promise(res=>{
+  if(!(window.crypto&&crypto.subtle)){document.body.innerHTML='<p style="padding:24px">이 앱은 https 주소에서 열어야 합니다.</p>';return}
+  if(ls.get('auth')===HASH.own){res();return}
+  const g=$('#gate');g.hidden=false;
+  const go=async()=>{const v=await sha($('#gIn').value);if(v===HASH.own||v===HASH.doctor){ls.set('auth',HASH.own);g.hidden=true;res()}else{$('#gErr').textContent='비밀번호가 맞지 않습니다.';$('#gIn').value=''}};
+  $('#gGo').onclick=go;$('#gIn').onkeydown=e=>{if(e.key==='Enter')go()};$('#gIn').focus()})}
+async function refresh(){if(!sb)return;const r=await sb.from('drugs').select('*').order('sort_order',{ascending:true}).order('id',{ascending:true});if(!r.error){drugs=r.data;cache();render();stamp();loadLogs()}}
+async function start(){await gate();await init();setInterval(()=>{if(!document.hidden)refresh()},60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()})}
+start();
+</script>
+</body>
+</html>
